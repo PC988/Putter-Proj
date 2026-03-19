@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000">
+<title>PuttLab</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --grn:#00e676;--red:#ff5252;--blu:#448aff;--yel:#ffd740;--dim:#555;--txt:#e8e8e8;
+}
+html,body{height:100%;width:100%;background:#000;color:var(--txt);
+  font-family:'DM Sans',sans-serif;overflow:hidden;
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+
+.scr{display:none;flex-direction:column;height:100%;width:100%;position:absolute;top:0;left:0}
+.scr.on{display:flex}
+
+/* ── START ── */
+#start{align-items:center;justify-content:center;gap:26px;
+  background:radial-gradient(ellipse at 50% 35%,#081a0b,#000 70%);padding:24px}
+.lmark{width:70px;height:70px;border-radius:18px;
+  background:linear-gradient(135deg,var(--grn),#00c853);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:#000;
+  box-shadow:0 0 50px rgba(0,230,118,.2)}
+.ltitle{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700}
+.lsub{color:var(--dim);font-size:13px;text-align:center;line-height:1.6;max-width:260px}
+.bbtn{background:var(--grn);color:#000;border:none;border-radius:14px;
+  font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;
+  padding:15px 42px;cursor:pointer;box-shadow:0 0 36px rgba(0,230,118,.18);transition:transform .12s}
+.bbtn:active{transform:scale(.96)}
+
+/* ── SETUP ── */
+#setup{align-items:center;justify-content:center;gap:16px;padding:24px;background:#000}
+.stitle{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+.sdesc{color:var(--dim);font-size:13px;text-align:center;line-height:1.6;max-width:280px}
+.irow{display:flex;align-items:center;gap:10px}
+.irow label{font-size:13px;color:var(--dim)}
+.ninp{width:68px;padding:9px;background:#141414;border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;color:var(--txt);font-family:'JetBrains Mono',monospace;
+  font-size:15px;text-align:center;outline:none}
+.ninp:focus{border-color:var(--grn)}
+
+/* ═══ TRACKER ═══ */
+#tracker{background:#000;position:relative}
+#vid{display:none}
+#cv{position:absolute;top:0;left:0;width:100%;height:100%}
+
+/* top status pills */
+.tbar{position:absolute;top:calc(8px + var(--safe-t));left:8px;right:8px;
+  display:flex;justify-content:space-between;align-items:center;
+  pointer-events:none;z-index:30}
+.pill{padding:4px 11px;border-radius:14px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.08)}
+.p-ok{background:rgba(0,230,118,.14);color:var(--grn);border-color:rgba(0,230,118,.22)}
+.p-no{background:rgba(255,82,82,.14);color:var(--red);border-color:rgba(255,82,82,.22)}
+.p-fps{background:rgba(0,0,0,.4);color:var(--dim)}
+.p-timer{background:rgba(68,138,255,.14);color:var(--blu);border-color:rgba(68,138,255,.22)}
+
+/* ── PANEL: SOLID BLACK, no gradient ── */
+.bpanel{position:absolute;left:0;right:0;z-index:20;pointer-events:auto;
+  display:flex;flex-direction:column;background:#000;
+  border-top:1px solid rgba(255,255,255,.08);transition:all .25s ease}
+
+.bpanel.at-bottom{
+  bottom:0;top:auto;
+  padding:10px 10px calc(10px + var(--safe-b)) 10px;
+}
+.bpanel.at-top{
+  top:0;bottom:auto;
+  padding:calc(10px + var(--safe-t)) 10px 10px 10px;
+  border-top:none;border-bottom:1px solid rgba(255,255,255,.08);
+  transform:rotate(180deg);
+}
+
+/* metrics — now 4 columns to include Contact */
+.mets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px}
+.mc{background:#111;border-radius:9px;padding:7px 5px;text-align:center;
+  border:1px solid rgba(255,255,255,.06)}
+.mc-l{font-size:7px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
+.mc-v{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;line-height:1.1}
+.mc-u{font-size:7px;color:var(--dim);margin-top:1px}
+.mc.good .mc-v{color:var(--grn)}.mc.warn .mc-v{color:var(--yel)}.mc.bad .mc-v{color:var(--red)}.mc.neut .mc-v{color:var(--blu)}
+
+/* buttons */
+.brow{display:flex;gap:5px;margin-bottom:5px}
+.b{flex:1;padding:10px 4px;border-radius:9px;border:1px solid rgba(255,255,255,.09);
+  background:#111;color:var(--txt);
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;
+  cursor:pointer;text-align:center;transition:background .12s}
+.b:active{background:#222}
+.b-grn{background:var(--grn);color:#000;border-color:var(--grn)}.b-grn:active{background:#00c853}
+.b-red{border-color:rgba(255,82,82,.35);color:var(--red)}
+.b-blu{border-color:rgba(68,138,255,.35);color:var(--blu)}
+.b-on{background:rgba(0,230,118,.15);border-color:rgba(0,230,118,.3);color:var(--grn)}
+
+/* clear timer row */
+.crow{display:flex;gap:4px;align-items:center;margin-bottom:0}
+.crow-lbl{font-size:9px;color:var(--dim);font-weight:600;white-space:nowrap;margin-right:2px;
+  font-family:'JetBrains Mono',monospace}
+.co{padding:6px 9px;border-radius:7px;background:#111;
+  border:1px solid rgba(255,255,255,.07);color:var(--dim);
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  cursor:pointer;transition:all .12s;text-align:center}
+.co.sel{background:rgba(68,138,255,.15);border-color:rgba(68,138,255,.3);color:var(--blu)}
+.co:active{background:#222}
+.co-inp{width:42px;padding:5px 4px;border-radius:7px;background:#111;
+  border:1px solid rgba(255,255,255,.07);color:var(--txt);
+  font-family:'JetBrains Mono',monospace;font-size:10px;text-align:center;outline:none}
+.co-inp:focus{border-color:var(--blu)}
+
+/* camera off overlay */
+.cam-off{position:absolute;top:0;left:0;right:0;bottom:0;z-index:25;
+  background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.cam-off-txt{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--dim)}
+
+/* ── CONTACT LINE (HTML element for drag hit area) ── */
+.contact-line{position:absolute;top:0;bottom:0;width:44px;z-index:15;
+  cursor:ew-resize;display:flex;align-items:center;justify-content:center;
+  touch-action:none}
+.contact-line-inner{width:2px;height:100%;
+  background:repeating-linear-gradient(to bottom,rgba(255,215,64,.7) 0px,rgba(255,215,64,.7) 6px,transparent 6px,transparent 12px)}
+.contact-line-label{position:absolute;top:calc(8px + var(--safe-t) + 28px);
+  background:rgba(0,0,0,.6);color:var(--yel);padding:3px 8px;border-radius:8px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap;
+  pointer-events:none}
+
+/* ── HISTORY ── */
+#history{padding:calc(14px + var(--safe-t)) 14px calc(14px + var(--safe-b));overflow-y:auto;gap:14px;background:#000}
+.hhead{display:flex;justify-content:space-between;align-items:center}
+.htitle{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+.hback{padding:7px 14px;border-radius:9px;background:#141414;border:1px solid rgba(255,255,255,.1);
+  color:var(--txt);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.scard{background:#111;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px;text-align:center}
+.scard .mc-l{margin-bottom:5px}.scard .mc-v{font-size:22px}
+.stitle2{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--dim);margin-bottom:6px}
+.ccont{background:#111;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px;overflow:hidden}
+.ccont canvas{width:100%!important;height:170px!important}
+.tlist{display:flex;flex-direction:column;gap:6px}
+.trow{background:#111;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;
+  display:grid;grid-template-columns:36px 1fr 1fr 1fr;align-items:center;gap:6px}
+.tnum{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--dim)}
+.tval{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- START -->
+<div id="start" class="scr on">
+  <div class="lmark">P</div>
+  <div class="ltitle">PuttLab</div>
+  <div class="lsub">Real-time putting tracker. Blue sticker on club face center, red sticker above it.</div>
+  <button class="bbtn" onclick="goSetup()">Start</button>
+</div>
+
+<!-- SETUP -->
+<div id="setup" class="scr">
+  <div class="stitle">Setup</div>
+  <div class="sdesc">Measure distance between your blue (face center) and red (above) stickers in cm.</div>
+  <div class="irow">
+    <label>Sticker gap:</label>
+    <input class="ninp" id="inDist" type="number" inputmode="decimal" value="8" min="1" max="50">
+    <span style="color:var(--dim);font-size:13px">cm</span>
+  </div>
+  <div class="sdesc" style="font-size:11px;margin-top:4px">Point camera straight down at putter, 60–100 cm above ground.</div>
+  <button class="bbtn" onclick="goCamera()">Open Camera</button>
+</div>
+
+<!-- TRACKER -->
+<div id="tracker" class="scr">
+  <video id="vid" playsinline autoplay muted></video>
+  <canvas id="cv"></canvas>
+
+  <!-- Draggable contact line -->
+  <div class="contact-line" id="contactLine">
+    <div class="contact-line-inner"></div>
+    <div class="contact-line-label" id="contactLabel">CONTACT</div>
+  </div>
+
+  <div class="cam-off" id="camOff" style="display:none">
+    <div class="cam-off-txt">Camera paused</div>
+    <button class="bbtn" style="font-size:13px;padding:12px 32px" onclick="enableCam()">Resume Camera</button>
+  </div>
+
+  <div class="tbar">
+    <div class="pill p-no" id="pill">NO SIGNAL</div>
+    <div id="timerPill" class="pill p-timer" style="display:none">--s</div>
+    <div class="pill p-fps" id="fps">-- fps</div>
+  </div>
+
+  <!-- SOLID BLACK panel -->
+  <div class="bpanel at-bottom" id="panel">
+    <!-- 4-column metrics: Angle, Speed, Accel, Contact -->
+    <div class="mets">
+      <div class="mc neut" id="cAngle">
+        <div class="mc-l">Face Angle</div>
+        <div class="mc-v" id="vAngle">--</div>
+        <div class="mc-u">degrees</div>
+      </div>
+      <div class="mc neut" id="cSpeed">
+        <div class="mc-l">Speed</div>
+        <div class="mc-v" id="vSpeed">--</div>
+        <div class="mc-u">mph</div>
+      </div>
+      <div class="mc neut" id="cAccel">
+        <div class="mc-l">Accel</div>
+        <div class="mc-v" id="vAccel">--</div>
+        <div class="mc-u">mph/s</div>
+      </div>
+      <div class="mc neut" id="cContact">
+        <div class="mc-l">Contact</div>
+        <div class="mc-v" id="vContact">--</div>
+        <div class="mc-u">degrees</div>
+      </div>
+    </div>
+    <div class="brow">
+      <button class="b b-red" id="btnRec" onclick="toggleRec()">● REC</button>
+      <button class="b b-grn" id="btnSave" onclick="saveTrial()">Save Trial</button>
+      <button class="b" onclick="goHistory()">History</button>
+    </div>
+    <div class="brow">
+      <button class="b b-blu" id="btnZero" onclick="zeroAngle()">Zero Angle</button>
+      <button class="b" id="btnFlip" onclick="flipUI()">⇅ Flip UI</button>
+      <button class="b b-red" id="btnCam" onclick="disableCam()">◉ Cam Off</button>
+    </div>
+    <div class="crow">
+      <span class="crow-lbl">Clear:</span>
+      <div class="co sel" onclick="setClear(3,this)">3s</div>
+      <div class="co" onclick="setClear(5,this)">5s</div>
+      <div class="co" onclick="setClear(10,this)">10s</div>
+      <div class="co" onclick="setClear(0,this)">Off</div>
+      <input class="co-inp" id="customClear" type="number" inputmode="numeric" placeholder="sec" min="1" max="999" onchange="setCustomClear(this)">
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="history" class="scr">
+  <div class="hhead">
+    <div class="htitle">Session History</div>
+    <button class="hback" onclick="goTracker()">← Back</button>
+  </div>
+  <div class="sgrid" id="sumGrid"></div>
+  <div class="stitle2" style="margin-top:6px">Face Angle per Trial</div>
+  <div class="ccont"><canvas id="chAngle"></canvas></div>
+  <div class="stitle2">Speed per Trial</div>
+  <div class="ccont"><canvas id="chSpeed"></canvas></div>
+  <div class="stitle2">All Trials</div>
+  <div class="tlist" id="tList"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   PUTTLAB v3
+   - Solid black UI panel
+   - Detection masked to visible camera area only
+   - Angle feedback moved from camera overlay → metrics bar
+   - Draggable vertical contact line with Club Contact metric
+   ═══════════════════════════════════════════════════════════ */
+
+const PW=640,PH=480,MIN_BLOB=25,ROI_R=45,SMOOTH=.35,SPD_SM=.3,MMS_MPH=.00223694;
+
+let distCm=8,vid,pC,pX,dC,dX;
+let vidW=0,vidH=0;
+let lR=null,lB=null,sR=null,sB=null;
+let pmx=null,pmy=null,pt=null,pSpd=0,smSpd=0,smAcc=0,pxMm=1;
+let angleOffset=0;
+let recording=false,recF=[],phase='idle',bsT=0,trT=0;
+let trials=[];
+let fc=0,ft=0,cFps=0;
+let camOn=true,loopRunning=false;
+let trail=[];
+let clearSec=3,clearTimer=null,clearCountdown=0;
+let uiFlipped=false;
+
+// Panel geometry (updated each frame for masking)
+let panelTop=0,panelBottom=0; // in display-canvas pixel coords
+let panelAtTop=false;
+
+// Contact line state
+let contactX=0.5; // 0–1 fraction of screen width
+let contactAngle=null; // last captured angle at contact
+let prevBlueDisplayX=null; // to detect crossing
+
+// Cover-fill transform (set once in draw, used for masking)
+let coverOX=0,coverOY=0,coverSX=1,coverSY=1;
+
+// ── SCREENS ──
+function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on')}
+function goSetup(){show('setup')}
+function goTracker(){show('tracker')}
+function goHistory(){show('history');renderHistory()}
+
+// ── CAMERA ──
+async function goCamera(){
+  distCm=parseFloat(document.getElementById('inDist').value)||8;
+  vid=document.getElementById('vid');
+  dC=document.getElementById('cv');
+  dX=dC.getContext('2d');
+  pC=document.createElement('canvas');pC.width=PW;pC.height=PH;
+  pX=pC.getContext('2d',{willReadFrequently:true});
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});
+    vid.srcObject=stream;
+    await new Promise(r=>{vid.onloadedmetadata=()=>{vidW=vid.videoWidth;vidH=vid.videoHeight;r()}});
+    await vid.play();
+    rszCv();show('tracker');
+    // Position contact line at center
+    positionContactLine();
+    ft=performance.now();
+    if(!loopRunning){loopRunning=true;requestAnimationFrame(loop)}
+    startClearTimer();
+  }catch(e){alert('Camera error: '+e.message+'\n\nAllow camera access. Must be on HTTPS.')}
+}
+
+function rszCv(){
+  if(!dC)return;
+  const dpr=devicePixelRatio||1;
+  dC.width=window.innerWidth*dpr;
+  dC.height=window.innerHeight*dpr;
+  positionContactLine();
+}
+addEventListener('resize',rszCv);
+
+function disableCam(){
+  camOn=false;
+  document.getElementById('camOff').style.display='flex';
+  document.getElementById('btnCam').textContent='◉ Cam On';
+  document.getElementById('btnCam').className='b b-grn';
+  if(vid&&vid.srcObject){vid.srcObject.getTracks().forEach(t=>t.stop());vid.srcObject=null}
+}
+async function enableCam(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});
+    vid.srcObject=stream;
+    await new Promise(r=>{vid.onloadedmetadata=()=>{vidW=vid.videoWidth;vidH=vid.videoHeight;r()}});
+    await vid.play();camOn=true;
+    document.getElementById('camOff').style.display='none';
+    document.getElementById('btnCam').textContent='◉ Cam Off';
+    document.getElementById('btnCam').className='b b-red';
+    rszCv();if(!loopRunning){loopRunning=true;requestAnimationFrame(loop)}
+  }catch(e){alert('Camera error: '+e.message)}
+}
+
+function flipUI(){
+  uiFlipped=!uiFlipped;
+  const p=document.getElementById('panel');
+  if(uiFlipped){p.classList.remove('at-bottom');p.classList.add('at-top');panelAtTop=true}
+  else{p.classList.remove('at-top');p.classList.add('at-bottom');panelAtTop=false}
+}
+
+function zeroAngle(){
+  if(sR&&sB){
+    const dx=sB.x-sR.x,dy=sB.y-sR.y;
+    angleOffset=Math.atan2(dx,dy)*(180/Math.PI);
+    const btn=document.getElementById('btnZero');
+    btn.textContent='✓ Zeroed';btn.className='b b-on';
+    setTimeout(()=>{btn.textContent='Zero Angle';btn.className='b b-blu'},800);
+  }else{alert('Need both markers visible to zero.')}
+}
+
+// ── CLEAR TRAIL ──
+function setClear(sec,el){
+  document.querySelectorAll('.co').forEach(o=>o.classList.remove('sel'));
+  if(el)el.classList.add('sel');
+  document.getElementById('customClear').value='';
+  clearSec=sec;startClearTimer();
+}
+function setCustomClear(inp){
+  const v=parseInt(inp.value);
+  if(v>0){document.querySelectorAll('.co').forEach(o=>o.classList.remove('sel'));clearSec=v;startClearTimer()}
+}
+function startClearTimer(){
+  if(clearTimer){clearInterval(clearTimer);clearTimer=null}
+  const tp=document.getElementById('timerPill');
+  if(clearSec<=0){tp.style.display='none';return}
+  clearCountdown=clearSec;tp.style.display='';tp.textContent=clearCountdown+'s';
+  clearTimer=setInterval(()=>{
+    clearCountdown--;
+    if(clearCountdown<=0){trail=[];clearCountdown=clearSec}
+    tp.textContent=clearCountdown+'s';
+  },1000);
+}
+
+// ═══════════════════════════════════════
+// CONTACT LINE — draggable
+// ═══════════════════════════════════════
+function positionContactLine(){
+  const cl=document.getElementById('contactLine');
+  if(!cl)return;
+  const sw=window.innerWidth;
+  cl.style.left=(contactX*sw - 22)+'px';
+}
+
+(function initContactDrag(){
+  const cl=document.getElementById('contactLine');
+  let dragging=false;
+
+  function onStart(e){
+    dragging=true;e.preventDefault();
+  }
+  function onMove(e){
+    if(!dragging)return;
+    const x=e.touches?e.touches[0].clientX:e.clientX;
+    contactX=Math.max(0.05,Math.min(0.95,x/window.innerWidth));
+    positionContactLine();
+  }
+  function onEnd(){dragging=false}
+
+  cl.addEventListener('mousedown',onStart);
+  cl.addEventListener('touchstart',onStart,{passive:false});
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('touchmove',onMove,{passive:true});
+  window.addEventListener('mouseup',onEnd);
+  window.addEventListener('touchend',onEnd);
+})();
+
+// ═══════════════════════════════════════
+// PANEL GEOMETRY — measure where UI is
+// ═══════════════════════════════════════
+function measurePanel(){
+  const p=document.getElementById('panel');
+  if(!p)return;
+  const r=p.getBoundingClientRect();
+  const dpr=devicePixelRatio||1;
+  // Convert CSS px to canvas px
+  panelTop=r.top*dpr;
+  panelBottom=r.bottom*dpr;
+}
+
+// ═══════════════════════════════════════
+// DETECTION with panel masking
+// ═══════════════════════════════════════
+
+// Convert display-canvas Y to processing-canvas Y
+function displayYtoProc(dy){
+  return (dy - coverOY)/coverSY;
+}
+
+function isInsideVisibleArea(procX,procY){
+  // Convert processing coords to display coords
+  const dispY=procY*coverSY+coverOY;
+  // If panel is at bottom: reject if dispY > panelTop
+  // If panel is at top: reject if dispY < panelBottom
+  if(panelAtTop){
+    return dispY >= panelBottom;
+  }else{
+    return dispY <= panelTop;
+  }
+}
+
+function detect(){
+  if(lR&&lB){const r=roi(lR,'r'),b=roi(lB,'b');if(r&&b){lR=r;lB=b;return{r,b}}}
+  return full();
+}
+
+function full(){
+  const id=pX.getImageData(0,0,PW,PH),buf=new Uint32Array(id.data.buffer);
+  let rsx=0,rsy=0,rw=0,bsx=0,bsy=0,bw=0;
+  for(let i=0;i<buf.length;i++){
+    const v=buf[i],r=(v&0xFF)/255,g=((v>>8)&0xFF)/255,b=((v>>16)&0xFF)/255;
+    const mx=Math.max(r,g,b),d=mx-Math.min(r,g,b);
+    if(mx<.18||d<.15)continue;const s=d/mx;if(s<.28)continue;
+    let h;if(mx===r)h=60*((g-b)/d+(g<b?6:0));else if(mx===g)h=60*((b-r)/d+2);else h=60*((r-g)/d+4);
+    const px=i%PW,py=(i/PW)|0;
+
+    // MASK: skip pixels that map to behind the UI panel
+    if(!isInsideVisibleArea(px,py))continue;
+
+    if((h<15||h>340)&&s>.35&&mx>.25){rsx+=px*s;rsy+=py*s;rw+=s}
+    else if(h>190&&h<270&&s>.30&&mx>.18){bsx+=px*s;bsy+=py*s;bw+=s}
+  }
+  const red=rw>MIN_BLOB?{x:rsx/rw,y:rsy/rw}:null;
+  const blue=bw>MIN_BLOB?{x:bsx/bw,y:bsy/bw}:null;
+  lR=red;lB=blue;return{r:red,b:blue};
+}
+
+function roi(c,color){
+  const x0=Math.max(0,Math.round(c.x)-ROI_R),y0=Math.max(0,Math.round(c.y)-ROI_R);
+  const rw=Math.min(ROI_R*2,PW-x0),rh=Math.min(ROI_R*2,PH-y0);
+  if(rw<4||rh<4)return null;
+
+  // Quick check: is center even in visible area?
+  if(!isInsideVisibleArea(c.x,c.y))return null;
+
+  const id=pX.getImageData(x0,y0,rw,rh),buf=new Uint32Array(id.data.buffer);
+  let sx=0,sy=0,w=0;const isR=color==='r';
+  for(let i=0;i<buf.length;i++){
+    const v=buf[i],r=(v&0xFF)/255,g=((v>>8)&0xFF)/255,b=((v>>16)&0xFF)/255;
+    const mx=Math.max(r,g,b),d=mx-Math.min(r,g,b);
+    if(mx<.18||d<.15)continue;const s=d/mx;if(s<.28)continue;
+    let h;if(mx===r)h=60*((g-b)/d+(g<b?6:0));else if(mx===g)h=60*((b-r)/d+2);else h=60*((r-g)/d+4);
+    const px=(i%rw)+x0,py=((i/rw)|0)+y0;
+    if(isR){if((h<15||h>340)&&s>.35&&mx>.25){sx+=px*s;sy+=py*s;w+=s}}
+    else{if(h>190&&h<270&&s>.30&&mx>.18){sx+=px*s;sy+=py*s;w+=s}}
+  }
+  return w>MIN_BLOB*.5?{x:sx/w,y:sy/w}:null;
+}
+
+// ═══════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════
+function loop(){
+  if(!camOn||!vid||vid.readyState<2){
+    loopRunning=camOn;if(camOn)requestAnimationFrame(loop);return;
+  }
+
+  // Measure panel position for masking
+  measurePanel();
+
+  pX.drawImage(vid,0,0,PW,PH);
+  const det=detect();
+  const now=performance.now();
+
+  if(det.r)sR=sR?lerp(sR,det.r,SMOOTH):{...det.r};
+  if(det.b)sB=sB?lerp(sB,det.b,SMOOTH):{...det.b};
+  const ok=sR&&sB&&det.r&&det.b;
+  let angle=null,speed=null,accel=null;
+
+  if(ok){
+    const dx=sB.x-sR.x,dy=sB.y-sR.y;
+    pxMm=Math.sqrt(dx*dx+dy*dy)/(distCm*10);
+    const rawAng=Math.atan2(dx,dy)*(180/Math.PI);
+    angle=rawAng-angleOffset;
+    if(angle>180)angle-=360;if(angle<-180)angle+=360;
+
+    const mx=(sR.x+sB.x)/2,my=(sR.y+sB.y)/2;
+    if(pmx!==null&&pt!==null){
+      const dt=(now-pt)/1000;
+      if(dt>0&&dt<.2){
+        const d=Math.sqrt((mx-pmx)**2+(my-pmy)**2);
+        const raw=(d/pxMm)/dt*MMS_MPH;
+        smSpd=SPD_SM*raw+(1-SPD_SM)*smSpd;speed=smSpd;
+        const ra=(raw-pSpd)/dt;smAcc=.2*ra+.8*smAcc;accel=smAcc;
+        pSpd=raw;
+      }
+    }
+    pmx=mx;pmy=my;pt=now;
+    trail.push({x:sB.x,y:sB.y,t:now});
+
+    if(recording){
+      if(recF.length>2){
+        const pf=recF[recF.length-2];
+        if(phase==='idle'&&speed>.15){phase='backswing';bsT=now}
+        else if(phase==='backswing'&&my>pf.my&&speed>.1){phase='downswing';trT=now}
+      }
+      recF.push({t:now,mx,my,speed:speed||0,accel:accel||0,angle:angle||0});
+    }
+  }else{
+    if(!det.r)sR=null;if(!det.b)sB=null;
+    pmx=null;pmy=null;pt=null;smSpd=0;pSpd=0;smAcc=0;
+  }
+
+  // Draw (also computes cover transform used by contact line detection)
+  draw(angle);
+
+  // ── CONTACT LINE crossing detection ──
+  if(sB&&angle!==null){
+    const blueDispX=sB.x*coverSX+coverOX;
+    const contactDispX=contactX*dC.width;
+    if(prevBlueDisplayX!==null){
+      // Crossed if sign changed
+      const prevSide=prevBlueDisplayX-contactDispX;
+      const currSide=blueDispX-contactDispX;
+      if(prevSide*currSide<0){
+        // Crossing happened — capture angle at this moment
+        contactAngle=angle;
+      }
+    }
+    prevBlueDisplayX=blueDispX;
+  }else{
+    prevBlueDisplayX=null;
+  }
+
+  updateUI(angle,speed,accel,ok);
+
+  fc++;
+  if(now-ft>500){cFps=Math.round(fc/((now-ft)/1000));fc=0;ft=now;
+    document.getElementById('fps').textContent=cFps+' fps'}
+  requestAnimationFrame(loop);
+}
+
+function lerp(a,b,t){return{x:t*b.x+(1-t)*a.x,y:t*b.y+(1-t)*a.y}}
+
+// ═══════════════════════════════════════
+// DRAWING
+// ═══════════════════════════════════════
+function draw(angle){
+  const dw=dC.width,dh=dC.height;
+
+  // Cover-fill math
+  const srcAR=PW/PH,dstAR=dw/dh;
+  let drawW,drawH,drawX,drawY;
+  if(srcAR>dstAR){drawH=dh;drawW=dh*srcAR;drawX=(dw-drawW)/2;drawY=0}
+  else{drawW=dw;drawH=dw/srcAR;drawX=0;drawY=(dh-drawH)/2}
+
+  // Store for masking & contact line
+  coverOX=drawX;coverOY=drawY;coverSX=drawW/PW;coverSY=drawH/PH;
+
+  dX.drawImage(pC,drawX,drawY,drawW,drawH);
+
+  function tx(px){return px*coverSX+coverOX}
+  function ty(py){return py*coverSY+coverOY}
+
+  // ── BLUE DOT TRAIL ──
+  if(trail.length>1){
+    dX.beginPath();dX.strokeStyle='rgba(68,138,255,0.2)';dX.lineWidth=9;
+    dX.lineJoin='round';dX.lineCap='round';
+    dX.moveTo(tx(trail[0].x),ty(trail[0].y));
+    for(let i=1;i<trail.length;i++)dX.lineTo(tx(trail[i].x),ty(trail[i].y));
+    dX.stroke();
+    dX.beginPath();dX.strokeStyle='rgba(68,138,255,0.85)';dX.lineWidth=2.5;
+    dX.lineJoin='round';dX.lineCap='round';
+    dX.moveTo(tx(trail[0].x),ty(trail[0].y));
+    for(let i=1;i<trail.length;i++)dX.lineTo(tx(trail[i].x),ty(trail[i].y));
+    dX.stroke();
+  }
+
+  // ── MARKERS (no text label on camera — feedback is in UI bar only) ──
+  if(sR)drawDot(tx(sR.x),ty(sR.y),'#ff5252',10);
+  if(sB)drawDot(tx(sB.x),ty(sB.y),'#448aff',12);
+
+  // ── LINE between R and B (no angle text drawn on camera) ──
+  if(sR&&sB){
+    dX.beginPath();
+    dX.moveTo(tx(sR.x),ty(sR.y));
+    dX.lineTo(tx(sB.x),ty(sB.y));
+    dX.strokeStyle='rgba(255,255,255,.5)';dX.lineWidth=1.5;dX.stroke();
+  }
+
+  // ── CONTACT LINE drawn on canvas (dotted yellow vertical) ──
+  const clx=contactX*dw;
+  dX.beginPath();
+  dX.setLineDash([8,8]);
+  dX.moveTo(clx,0);dX.lineTo(clx,dh);
+  dX.strokeStyle='rgba(255,215,64,0.6)';dX.lineWidth=2;
+  dX.stroke();dX.setLineDash([]);
+
+  // Rec indicator
+  if(recording){
+    dX.fillStyle='#ff5252';dX.beginPath();
+    dX.arc(dw-22,38,5,0,Math.PI*2);dX.fill();
+  }
+}
+
+function drawDot(x,y,col,r){
+  dX.beginPath();dX.arc(x,y,r,0,Math.PI*2);
+  dX.strokeStyle=col;dX.lineWidth=2.5;dX.stroke();
+  dX.beginPath();dX.arc(x,y,3,0,Math.PI*2);
+  dX.fillStyle=col;dX.fill();
+}
+
+// ── UI UPDATES ──
+function updateUI(angle,speed,accel,ok){
+  const p=document.getElementById('pill');
+  p.textContent=ok?'TRACKING':'NO SIGNAL';
+  p.className='pill '+(ok?'p-ok':'p-no');
+
+  const ae=document.getElementById('vAngle'),ac=document.getElementById('cAngle');
+  if(angle!==null){const a=Math.abs(angle);ae.textContent=angle.toFixed(1);
+    ac.className='mc '+(a<1?'good':a<2?'warn':'bad')}
+  else{ae.textContent='--';ac.className='mc neut'}
+
+  const se=document.getElementById('vSpeed'),sc=document.getElementById('cSpeed');
+  if(speed!==null&&speed>.05){se.textContent=speed.toFixed(1);sc.className='mc good'}
+  else{se.textContent='--';sc.className='mc neut'}
+
+  const ace=document.getElementById('vAccel'),acc=document.getElementById('cAccel');
+  if(accel!==null&&speed>.05){ace.textContent=accel.toFixed(1);
+    acc.className='mc '+(accel>0?'good':'bad')}
+  else{ace.textContent='--';acc.className='mc neut'}
+
+  // Contact angle
+  const ce=document.getElementById('vContact'),cc=document.getElementById('cContact');
+  if(contactAngle!==null){
+    const a=Math.abs(contactAngle);
+    ce.textContent=contactAngle.toFixed(1);
+    cc.className='mc '+(a<1?'good':a<2?'warn':'bad');
+  }else{ce.textContent='--';cc.className='mc neut'}
+}
+
+// ── RECORDING ──
+function toggleRec(){
+  recording=!recording;
+  const btn=document.getElementById('btnRec');
+  if(recording){btn.textContent='■ STOP';btn.style.color='#ff5252';btn.style.borderColor='rgba(255,82,82,.5)';
+    recF=[];phase='idle';bsT=0;trT=0;contactAngle=null}
+  else{btn.textContent='● REC';btn.style.color='';btn.style.borderColor=''}
+}
+function saveTrial(){
+  if(recF.length<5){alert('Press REC → putt → STOP → Save Trial');return}
+  let pk=0,pi=0;
+  for(let i=0;i<recF.length;i++){if(recF[i].speed>pk){pk=recF[i].speed;pi=i}}
+  const ia=recF[pi].angle,pa=recF[pi].accel;
+  let tempo=0;
+  if(trT>0&&bsT>0){const bs=trT-bsT,ds=recF[recF.length-1].t-trT;if(ds>0)tempo=bs/ds}
+  trials.push({angle:ia,speed:pk,accel:pa,tempo,contact:contactAngle,ts:Date.now()});
+  recording=false;recF=[];phase='idle';bsT=0;trT=0;
+  document.getElementById('btnRec').textContent='● REC';
+  document.getElementById('btnRec').style.color='';document.getElementById('btnRec').style.borderColor='';
+  const sb=document.getElementById('btnSave');
+  sb.textContent='✓ Saved';sb.className='b b-on';
+  setTimeout(()=>{sb.textContent='Save Trial';sb.className='b b-grn'},600);
+}
+
+// ── HISTORY ──
+function renderHistory(){
+  const g=document.getElementById('sumGrid'),l=document.getElementById('tList');
+  if(!trials.length){g.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--dim);padding:36px 0">No trials yet.</div>';l.innerHTML='';return}
+  const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const std=a=>{const m=avg(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length)};
+  const angs=trials.map(t=>t.angle),spds=trials.map(t=>t.speed);
+  const contacts=trials.map(t=>t.contact).filter(c=>c!==null);
+  const aA=avg(angs),sA=std(angs),aS=avg(spds),sS=std(spds);
+  const aC=contacts.length?avg(contacts):null,sC=contacts.length?std(contacts):null;
+  g.innerHTML=`
+    <div class="scard"><div class="mc-l">Avg Face Angle</div>
+      <div class="mc-v" style="color:${Math.abs(aA)<1?'var(--grn)':Math.abs(aA)<2?'var(--yel)':'var(--red)'}">${aA.toFixed(1)}°</div>
+      <div class="mc-u">± ${sA.toFixed(1)}° margin</div></div>
+    <div class="scard"><div class="mc-l">Avg Speed</div>
+      <div class="mc-v" style="color:var(--grn)">${aS.toFixed(1)}</div>
+      <div class="mc-u">mph ± ${sS.toFixed(1)}</div></div>
+    <div class="scard"><div class="mc-l">Avg Contact</div>
+      <div class="mc-v" style="color:${aC!==null&&Math.abs(aC)<1?'var(--grn)':aC!==null&&Math.abs(aC)<2?'var(--yel)':'var(--red)'}">${aC!==null?aC.toFixed(1)+'°':'--'}</div>
+      <div class="mc-u">${sC!==null?'± '+sC.toFixed(1)+'°':''}</div></div>
+    <div class="scard"><div class="mc-l">Trials</div>
+      <div class="mc-v" style="color:var(--blu)">${trials.length}</div>
+      <div class="mc-u">total putts</div></div>`;
+  l.innerHTML=`<div class="trow" style="background:transparent;border:none;padding:4px 12px">
+    <div class="tnum">#</div><div class="tval" style="font-size:9px;color:var(--dim)">ANGLE</div>
+    <div class="tval" style="font-size:9px;color:var(--dim)">SPEED</div>
+    <div class="tval" style="font-size:9px;color:var(--dim)">CONTACT</div></div>`;
+  trials.forEach((t,i)=>{
+    const c=Math.abs(t.angle)<1?'var(--grn)':Math.abs(t.angle)<2?'var(--yel)':'var(--red)';
+    const cc=t.contact!==null?(Math.abs(t.contact)<1?'var(--grn)':Math.abs(t.contact)<2?'var(--yel)':'var(--red)'):'var(--dim)';
+    l.innerHTML+=`<div class="trow"><div class="tnum">${i+1}</div>
+      <div class="tval" style="color:${c}">${t.angle.toFixed(1)}°</div>
+      <div class="tval">${t.speed.toFixed(1)} mph</div>
+      <div class="tval" style="color:${cc}">${t.contact!==null?t.contact.toFixed(1)+'°':'—'}</div></div>`});
+  renderCharts(angs,spds);
+}
+let aCh=null,sCh=null;
+function renderCharts(angs,spds){
+  const lb=angs.map((_,i)=>''+(i+1));
+  const co=(u,rng)=>({responsive:true,maintainAspectRatio:false,animation:{duration:250},
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1a1a',borderColor:'#333',borderWidth:1,
+      titleFont:{family:'JetBrains Mono',size:10},bodyFont:{family:'JetBrains Mono',size:11},
+      callbacks:{label:c=>c.parsed.y.toFixed(1)+u}}},
+    scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#444',font:{family:'JetBrains Mono',size:9}}},
+      y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#444',font:{family:'JetBrains Mono',size:9}},
+        ...(rng?{suggestedMin:rng[0],suggestedMax:rng[1]}:{})}}});
+  if(aCh)aCh.destroy();
+  aCh=new Chart(document.getElementById('chAngle'),{type:'line',
+    data:{labels:lb,datasets:[{data:angs,borderColor:'#ff5252',backgroundColor:'rgba(255,82,82,.08)',
+      fill:true,tension:.3,pointRadius:4,
+      pointBackgroundColor:angs.map(a=>Math.abs(a)<1?'#00e676':Math.abs(a)<2?'#ffd740':'#ff5252'),borderWidth:2}]},
+    options:co('°',[-5,5])});
+  if(sCh)sCh.destroy();
+  sCh=new Chart(document.getElementById('chSpeed'),{type:'line',
+    data:{labels:lb,datasets:[{data:spds,borderColor:'#448aff',backgroundColor:'rgba(68,138,255,.08)',
+      fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#448aff',borderWidth:2}]},
+    options:co(' mph')});
+}
+</script>
+</body>
+</html>
